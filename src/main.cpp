@@ -7,8 +7,6 @@ $on_mod(Loaded) {
 	CCFileUtils::sharedFileUtils()->addPriorityPath(
 		(Mod::get()->getTempDir() / "resources" / "user95401.run_mod").string().data()
 	);
-	CCSpriteFrameCache::sharedSpriteFrameCache()->addSpriteFramesWithFile("typo_run_sheet.plist"_spr, "typo_run_sheet.png"_spr);
-	CCSpriteFrameCache::sharedSpriteFrameCache()->addSpriteFramesWithFile("tp_sheet.plist"_spr, "tp_sheet.png"_spr);
 }
 
 //tools
@@ -261,7 +259,7 @@ class $modify(CCSpriteModExt, CCSprite) {
 
 #endif // 1
 
-//layers
+//layers n objects
 #if 1
 
 #include <Geode/modify/MenuLayer.hpp>
@@ -367,6 +365,129 @@ class $modify(CreatorLayerExt, CreatorLayer) {
 			creatorButtonsMenu->setLayout(ColumnLayout::create()->setAxisAlignment(AxisAlignment::Center)->setAxisReverse(1));
 		}
 		return true;
+	}
+};
+
+#include <Geode/modify/PlayerObject.hpp>
+class $modify(PlayerObjectExt, PlayerObject) {
+	struct Fields {
+		float m_lastPlatformerXVelocity = 0.1;
+	};
+	bool isCube() {
+		auto player = this;
+		if (!player->m_isShip && !player->m_isBall && !player->m_isBird && !player->m_isDart && !player->m_isRobot && !player->m_isSpider && !player->m_isSwing)
+			return true;
+		return false;
+	}
+	void mySch(float) {
+		m_fields->m_lastPlatformerXVelocity =
+			fabs(this->m_platformerXVelocity) > 0.001f ?
+			this->m_platformerXVelocity : m_fields->m_lastPlatformerXVelocity;
+		auto mainLayer = this->getChildByIDRecursive("main-layer");
+		auto plr_run = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_run"));
+		auto plr_jumpup = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_jumpup"));
+		auto plr_jumpdown = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_jumpdown"));
+		auto plr_stand = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_stand"));
+		if (plr_run and plr_jumpup and mainLayer) {
+			auto showplr = (this->isCube() or this->m_isRobot) and not this->m_isDead;
+			auto jmpup = not this->m_isOnGround and fabs(m_yVelocity) > 0.1f;
+			auto stand = this->m_platformerXVelocity == 0.f and this->m_isPlatformer;
+			auto goesLeft = m_fields->m_lastPlatformerXVelocity < 0.f and this->m_isPlatformer;
+			mainLayer->setVisible(not showplr);
+			;;;;;; plr_run->setVisible(showplr and !jmpup and !stand);
+			;;; plr_jumpup->setVisible(showplr and jmpup and m_yVelocity > 0.1f);
+			; plr_jumpdown->setVisible(showplr and jmpup and m_yVelocity < -0.1f);
+			;;;; plr_stand->setVisible(showplr and !jmpup and stand);
+			plr_run->setFlipX(goesLeft);
+			plr_jumpup->setFlipX(goesLeft);
+			plr_jumpdown->setFlipX(goesLeft);
+			plr_stand->setFlipX(goesLeft);
+			plr_run->setFlipY(this->m_isUpsideDown);
+			plr_jumpup->setFlipY(this->m_isUpsideDown);
+			plr_jumpdown->setFlipY(this->m_isUpsideDown);
+			plr_stand->setFlipY(this->m_isUpsideDown);
+			plr_run->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
+			plr_jumpup->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
+			plr_jumpdown->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
+			plr_stand->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
+		}
+		this->m_robotBurstParticles->setVisible(0);
+		this->m_iconSprite->setScale(1.f);
+		log::debug("{}->{}() m_yVelocity={}", this, __FUNCTION__, m_yVelocity);
+	}
+	void updateRotation(float p0) {
+		if (this->isCube()) {
+			this->m_isRobot = 1;
+			if (this->m_isOnGround) PlayerObject::updateRotation(p0);
+			this->m_isRobot = 0;
+		}
+		else PlayerObject::updateRotation(p0);
+	}
+	bool init(int p0, int p1, GJBaseGameLayer * p2, cocos2d::CCLayer * p3, bool p4) {
+		if (!PlayerObject::init( p0,  p1, p2, p3, p4)) return false;
+		this->schedule(schedule_selector(PlayerObjectExt::mySch));
+		auto plr_run = CCSprite::createWithSpriteFrameName("plr_run1.png"_spr);
+		if (plr_run) {
+			plr_run->setScale(1.4f);
+			plr_run->setID("plr_run");
+			plr_run->setVisible(0);
+			this->addChild(plr_run);
+			//frames
+			auto frames = new CCArray;
+			for (int i = 1; i <= 4; i++)
+				frames->addObject(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName(fmt::format("plr_run{}.png"_spr, i).data()));
+			//animate
+			plr_run->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.04f))));
+		};
+		auto plr_stand = CCSprite::createWithSpriteFrameName("plr_stand1.png"_spr);
+		if (plr_stand) {
+			plr_stand->setScale(1.4f);
+			plr_stand->setID("plr_stand");
+			plr_stand->setVisible(0);
+			this->addChild(plr_stand);
+			//frames
+			auto frames = new CCArray;
+			for (int i = 1; i <= 10; i++)
+				frames->addObject(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName(fmt::format("plr_stand{}.png"_spr, i).data()));
+			//animate
+			plr_stand->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.06f))));
+			this->m_iconSprite->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.06f))));
+		};
+		auto plr_jumpup = CCSprite::createWithSpriteFrameName("plr_jumpup1.png"_spr);
+		if (plr_jumpup) {
+			plr_jumpup->setScale(1.4f);
+			plr_jumpup->setID("plr_jumpup");
+			plr_jumpup->setVisible(0);
+			this->addChild(plr_jumpup);
+			//frames
+			auto frames = new CCArray;
+			for (int i = 1; i <= 3; i++)
+				frames->addObject(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName(fmt::format("plr_jumpup{}.png"_spr, i).data()));
+			//animate
+			plr_jumpup->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.06f))));
+		};
+		auto plr_jumpdown = CCSprite::createWithSpriteFrameName("plr_jumpdown1.png"_spr);
+		if (plr_jumpdown) {
+			plr_jumpdown->setScale(1.4f);
+			plr_jumpdown->setID("plr_jumpdown");
+			plr_jumpdown->setVisible(0);
+			this->addChild(plr_jumpdown);
+			//frames
+			auto frames = new CCArray;
+			for (int i = 1; i <= 3; i++)
+				frames->addObject(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName(fmt::format("plr_jumpdown{}.png"_spr, i).data()));
+			//animate
+			plr_jumpdown->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.06f))));
+		};
+		updatePlayerFrame(1);
+		return true;
+	}
+	void updatePlayerFrame(int p0) {
+		PlayerObject::updatePlayerFrame(p0);
+		this->m_iconSprite->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("plr_stand1.png"_spr));
+		this->m_iconSpriteSecondary->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("emptyGlow.png"));
+		this->m_iconSpriteWhitener->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("emptyGlow.png"));
+		this->m_iconGlow->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("emptyGlow.png"));
 	}
 };
 

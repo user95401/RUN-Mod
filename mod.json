@@ -33,6 +33,18 @@
 			"typo_run_sheet": [
 				"assets/**/upscale/typo_run_only*"
 			],
+			"plr_run_sheet": [
+				"assets/**/plr_run_sheet/plr_run*"
+			],
+			"plr_stand_sheet": [
+				"assets/**/plr_stand_sheet/plr_stand*"
+			],
+			"plr_jumpup_sheet": [
+				"assets/**/plr_jumpup_sheet/plr_jumpup*"
+			],
+			"plr_jumpdown_sheet": [
+				"assets/**/plr_jumpdown_sheet/plr_jumpdown*"
+			],
 			"tp_sheet": [
 				"assets/_tp/frames/**/*.png"
 			]
