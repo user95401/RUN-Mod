@@ -390,13 +390,13 @@ class $modify(PlayerObjectExt, PlayerObject) {
 		auto plr_stand = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_stand"));
 		if (plr_run and plr_jumpup and mainLayer) {
 			auto showplr = (this->isCube() or this->m_isRobot) and not this->m_isDead;
-			auto jmpup = not this->m_isOnGround and fabs(m_yVelocity) > 0.1f;
-			auto stand = this->m_platformerXVelocity == 0.f and this->m_isPlatformer;
+			auto jmpup = (not this->m_isOnGround and fabs(m_yVelocity) > 0.1f) or this->m_isDashing;
+			auto stand = fabs(this->m_platformerXVelocity) < 2.f and this->m_isPlatformer;
 			auto goesLeft = m_fields->m_lastPlatformerXVelocity < 0.f and this->m_isPlatformer;
 			mainLayer->setVisible(not showplr);
 			;;;;;; plr_run->setVisible(showplr and !jmpup and !stand);
 			;;; plr_jumpup->setVisible(showplr and jmpup and m_yVelocity > 0.1f);
-			; plr_jumpdown->setVisible(showplr and jmpup and m_yVelocity < -0.1f);
+			; plr_jumpdown->setVisible(showplr and jmpup and (m_yVelocity < -0.1f) or this->m_isDashing);
 			;;;; plr_stand->setVisible(showplr and !jmpup and stand);
 			plr_run->setFlipX(goesLeft);
 			plr_jumpup->setFlipX(goesLeft);
