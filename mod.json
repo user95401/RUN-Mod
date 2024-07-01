@@ -1,0 +1,48 @@
+{
+	"geode": "3.1.1",
+	"gd": {
+		"win": "2.206",
+		"android": "2.206",
+		"mac": "2.206",
+		"ios": "2.206"
+	},
+	"id": "user95401.run_mod",
+	"name": "RUN Mod (game stuff port)",
+	"version": "v1.0.0",
+	"developer": "user95401",
+	"description": "",
+	"early-load": true,
+	"resources": {
+		"files": [
+			"assets/preseted-factors/*.png",
+			"assets/preseted-factors/*.fnt",
+			"assets/**/*.ttf",
+			"assets/**/*.ogg"
+		],
+		"sprites": [
+			"assets/visual/**/*.png",
+			"assets/_tp/sprites/**/*.png"
+		],
+		"spritesheets": {
+			"clouds_finish_back_sheet": [
+				"assets/**/upscale/clouds_finish_back-*"
+			],
+			"main_illustration_sheet": [
+				"assets/**/upscale/main_illustration-*"
+			],
+			"typo_run_sheet": [
+				"assets/**/upscale/typo_run_only*"
+			],
+			"tp_sheet": [
+				"assets/_tp/frames/**/*.png"
+			]
+		}
+	},
+	"dependencies": [
+		{
+			"id": "geode.node-ids",
+			"version": "v1.7.1",
+			"importance": "required"
+		}
+	]
+}
