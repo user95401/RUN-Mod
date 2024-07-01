@@ -1,22 +1,22 @@
-# RUNMenusMod(gameuiport)
-This is where she makes a mod.
+# RUN Mod (game stuff port)
+
+aa proj to port some stuff of one game (ui and resources) to geometry dash
 
 <img src="logo.png" width="150" alt="the mod's logo" />
 
-*Update logo.png to change your mod's icon (please)*
+## sooo ye aa an A original game used for mod
 
-## Getting started
-We recommend heading over to [the getting started section on our docs](https://docs.geode-sdk.org/getting-started/) for useful info on what to do next.
+Is a **RUN ALPHA 1.2 WINDOWS** that i got on [itch page](https://lateamrun.itch.io/run-the-world-in-between#demo)
 
-## Build instructions
-For more info, see [our docs](https://docs.geode-sdk.org/getting-started/create-mod#build)
-```sh
-# Assuming you have the CLI set up already
-geode build
+### [RUN: The world in-between by LaTeamRun](https://lateamrun.itch.io/run-the-world-in-between)
+
+```js
+ Development: Hephep 
+ Music: Thomas Barrandon 
+ SFX: Louise Jeanson 
+ Graphics: EncreMecanique
+ QA: Sorghal
+ PR: Mellyfroggy
 ```
 
-# Resources
-* [Geode SDK Documentation](https://docs.geode-sdk.org/)
-* [Geode SDK Source Code](https://github.com/geode-sdk/geode/)
-* [Bindings](https://github.com/geode-sdk/bindings/)
-* [Dev Tools](https://github.com/geode-sdk/DevTools)
+got revesed by [GDRE tools](https://github.com/bruvzg/gdsdecomp) `v0.6.2`
