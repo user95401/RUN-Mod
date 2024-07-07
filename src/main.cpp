@@ -23,7 +23,13 @@ public:
 	static CCSprite* createWithSpriteFrameName(const char* pszSpriteFrameName) {
 		auto rtn = CCSprite::createWithSpriteFrameName(pszSpriteFrameName);
 		auto boolUserObj = dynamic_cast<CCBool*>(rtn->getUserObject("geode.texture-loader/fallback"));
-		if (boolUserObj) return nullptr;
+		if (boolUserObj) {
+			log::warn(
+				"in {}(\"{}\") detected geode.texture-loader/fallback ({})! returning nil.",
+				__FUNCTION__, pszSpriteFrameName, boolUserObj
+			);
+			return nullptr;
+		}
 		else return rtn;
 	};
 };
@@ -115,6 +121,20 @@ void updateItemToLabel(CCMenuItemSpriteExtra* item) {
 
 //sound effects
 #if 1
+
+namespace RunSoundsPlayer {
+	auto ae = FMODAudioEngine::sharedEngine();
+	bool rndb() {
+		std::srand(time(0)); //random seed
+		int n = rand() % 2;
+		return n == 1;
+	}
+	void playRunSound() {
+		auto sname = std::string("run_a.ogg");
+		if (rndb()) sname = "run_b.ogg";
+		return ae->playEffect(sname);
+	}
+};
 
 #include <Geode/modify/GameManager.hpp>
 class $modify(GameManagerExt, GameManager) {
@@ -231,6 +251,11 @@ class $modify(CCSpriteModExt, CCSprite) {
 		auto frameAtSprExtName = (Mod::get()->getID() + "/" + pszSpriteFrameName);
 		auto frameAtSprExtExists = CCSpriteFrameCache::get()->m_pSpriteFrames->objectForKey(frameAtSprExtName);
 		auto rtn = CCSprite::createWithSpriteFrameName(frameAtSprExtExists ? frameAtSprExtName.data() : pszSpriteFrameName);
+		if (string::contains(pszSpriteFrameName, "geode.loader/mods-list-top")) rtn = CCSprite::create();
+		if (string::contains(pszSpriteFrameName, "geode.loader/mods-list-bottom")) rtn = CCSprite::create();
+		if (string::contains(pszSpriteFrameName, "geode.loader/mods-list-side")) rtn = CCSprite::create();
+		if (string::contains(pszSpriteFrameName, "GJ_table_")) rtn = CCSprite::create();
+		if (string::contains(pszSpriteFrameName, "chain_01_001.png")) rtn = CCSprite::create();
 		if (string::contains(pszSpriteFrameName, "GJ_logo_001")) {
 			auto container = CCSprite::create();
 			rtn = container;
@@ -240,10 +265,13 @@ class $modify(CCSpriteModExt, CCSprite) {
 				container->addChild(typo_run_only1);
 				//frames
 				auto frames = new CCArray;
-				for (int i = 1; i <= 12; i++)
-					frames->addObject(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName(fmt::format("typo_run_only{}.png"_spr, i).data()));
+				for (int i = 1; i <= 12; i++) {
+					auto name = fmt::format("typo_run_only{}.png"_spr, i);
+					auto sprite_frame = CCSpriteExt::createWithSpriteFrameName(name.data());
+					if (sprite_frame != nullptr) frames->addObject(sprite_frame->displayFrame());
+				};
 				//animate
-				typo_run_only1->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.1f))));
+				if (frames->count() > 1) typo_run_only1->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.1f))));
 			};
 			//label
 			auto label = CCLabelBMFont::create("MEETS GD IDK LOL", "chatFont.fnt");
@@ -372,6 +400,7 @@ class $modify(CreatorLayerExt, CreatorLayer) {
 class $modify(PlayerObjectExt, PlayerObject) {
 	struct Fields {
 		float m_lastPlatformerXVelocity = 0.1;
+		DashRingObject* m_lastDashRingObject = nullptr;
 	};
 	bool isCube() {
 		auto player = this;
@@ -379,7 +408,23 @@ class $modify(PlayerObjectExt, PlayerObject) {
 			return true;
 		return false;
 	}
+	bool isStanding() {
+		return fabs(this->m_platformerXVelocity) < 2.f and this->m_isPlatformer;
+	}
+	bool isOnAir() {
+		return (not this->m_isOnGround and fabs(m_yVelocity) > 0.3f);
+	}
+	bool isTurnedLeft() {
+		return m_fields->m_lastPlatformerXVelocity < 0.f and this->m_isPlatformer;
+	}
+	bool showAnimPlr() {
+		return (this->isCube() or this->m_isRobot) and (not this->m_isDead);
+	}
+	void mySchInterval15(float) {
+		if (showAnimPlr() and !isStanding() and !isOnAir() and !m_isDashing) RunSoundsPlayer::playRunSound();
+	}
 	void mySch(float) {
+		if (not this) return;
 		m_fields->m_lastPlatformerXVelocity =
 			fabs(this->m_platformerXVelocity) > 0.001f ?
 			this->m_platformerXVelocity : m_fields->m_lastPlatformerXVelocity;
@@ -388,37 +433,49 @@ class $modify(PlayerObjectExt, PlayerObject) {
 		auto plr_jumpup = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_jumpup"));
 		auto plr_jumpdown = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_jumpdown"));
 		auto plr_stand = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_stand"));
-		if (plr_run and plr_jumpup and mainLayer) {
-			auto showplr = (this->isCube() or this->m_isRobot) and not this->m_isDead;
-			auto jmpup = (not this->m_isOnGround and fabs(m_yVelocity) > 0.1f) or this->m_isDashing;
-			auto stand = fabs(this->m_platformerXVelocity) < 2.f and this->m_isPlatformer;
-			auto goesLeft = m_fields->m_lastPlatformerXVelocity < 0.f and this->m_isPlatformer;
-			mainLayer->setVisible(not showplr);
-			;;;;;; plr_run->setVisible(showplr and !jmpup and !stand);
-			;;; plr_jumpup->setVisible(showplr and jmpup and m_yVelocity > 0.1f);
-			; plr_jumpdown->setVisible(showplr and jmpup and (m_yVelocity < -0.1f) or this->m_isDashing);
-			;;;; plr_stand->setVisible(showplr and !jmpup and stand);
-			plr_run->setFlipX(goesLeft);
-			plr_jumpup->setFlipX(goesLeft);
-			plr_jumpdown->setFlipX(goesLeft);
-			plr_stand->setFlipX(goesLeft);
+		auto plr_dash = dynamic_cast<CCSprite*>(this->getChildByIDRecursive("plr_dash"));
+		auto lastDashRingRotation = 0.f;
+		if (m_fields->m_lastDashRingObject) lastDashRingRotation = m_fields->m_lastDashRingObject->getRotation();
+		if (plr_run and plr_jumpup and plr_jumpdown and plr_dash and plr_stand and mainLayer) {
+			mainLayer->setVisible(not showAnimPlr());
+			;;;;;; plr_run->setVisible(showAnimPlr() and !m_isDashing and !isOnAir() and !isStanding());
+			;;; plr_jumpup->setVisible(showAnimPlr() and !m_isDashing and isOnAir() and (m_yVelocity > 0.3f));
+			; plr_jumpdown->setVisible(showAnimPlr() and !m_isDashing and isOnAir() and (m_yVelocity < -0.3f));
+			;;;; plr_stand->setVisible(showAnimPlr() and !m_isDashing and !isOnAir() and isStanding());
+			;;;;; plr_dash->setVisible(showAnimPlr() and m_isDashing);
+			plr_run->setFlipX(isTurnedLeft());
+			plr_jumpup->setFlipX(isTurnedLeft());
+			plr_jumpdown->setFlipX(isTurnedLeft());
+			plr_stand->setFlipX(isTurnedLeft());
+			plr_dash->setFlipX((isTurnedLeft() and !m_isDashing));// or (lastDashRingRotation > 45));
 			plr_run->setFlipY(this->m_isUpsideDown);
 			plr_jumpup->setFlipY(this->m_isUpsideDown);
 			plr_jumpdown->setFlipY(this->m_isUpsideDown);
 			plr_stand->setFlipY(this->m_isUpsideDown);
+			plr_dash->setFlipY(this->m_isUpsideDown);
 			plr_run->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
 			plr_jumpup->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
 			plr_jumpdown->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
 			plr_stand->setAnchorPoint(this->m_isUpsideDown ? CCPoint(0.5f, 0.66f) : CCPoint(0.5f, 0.43f));
+			plr_dash->setAnchorPoint(isTurnedLeft() ? CCPoint(0.3f, 0.5f) : CCPoint(0.7f, 0.5f));
 		}
-		this->m_robotBurstParticles->setVisible(0);
+		this->m_playerGroundParticles->setBlendFunc(this->m_iconSprite->getBlendFunc());
+		this->m_landParticles0->setBlendFunc(this->m_iconSprite->getBlendFunc());
+		this->m_landParticles1->setBlendFunc(this->m_iconSprite->getBlendFunc());
+		this->m_dashParticles->setBlendFunc(this->m_iconSprite->getBlendFunc());
+		this->m_robotBurstParticles->setVisible(0);//setBlendFunc(this->m_iconSprite->getBlendFunc());
 		this->m_iconSprite->setScale(1.f);
-		log::debug("{}->{}() m_yVelocity={}", this, __FUNCTION__, m_yVelocity);
+		//log::debug("{}->{}() lastDashRingRotation={}", this, __FUNCTION__, lastDashRingRotation);
+	}
+	void startDashing(DashRingObject* p0) {
+		m_fields->m_lastDashRingObject = p0;
+		//log::debug("{}->{}() m_fields->m_lastDashRingObject={}", this, __FUNCTION__, m_fields->m_lastDashRingObject);
+		PlayerObject::startDashing(p0);
 	}
 	void updateRotation(float p0) {
 		if (this->isCube()) {
 			this->m_isRobot = 1;
-			if (this->m_isOnGround) PlayerObject::updateRotation(p0);
+			if (not isOnAir()) PlayerObject::updateRotation(p0);
 			this->m_isRobot = 0;
 		}
 		else PlayerObject::updateRotation(p0);
@@ -426,6 +483,7 @@ class $modify(PlayerObjectExt, PlayerObject) {
 	bool init(int p0, int p1, GJBaseGameLayer * p2, cocos2d::CCLayer * p3, bool p4) {
 		if (!PlayerObject::init( p0,  p1, p2, p3, p4)) return false;
 		this->schedule(schedule_selector(PlayerObjectExt::mySch));
+		this->schedule(schedule_selector(PlayerObjectExt::mySchInterval15), 0.15);
 		auto plr_run = CCSprite::createWithSpriteFrameName("plr_run1.png"_spr);
 		if (plr_run) {
 			plr_run->setScale(1.4f);
@@ -479,6 +537,19 @@ class $modify(PlayerObjectExt, PlayerObject) {
 			//animate
 			plr_jumpdown->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.06f))));
 		};
+		auto plr_dash = CCSprite::createWithSpriteFrameName("plr_dash1.png"_spr);
+		if (plr_dash) {
+			plr_dash->setScale(2.f);
+			plr_dash->setID("plr_dash");
+			plr_dash->setVisible(0);
+			this->addChild(plr_dash);
+			//frames
+			auto frames = new CCArray;
+			for (int i = 1; i <= 3; i++)
+				frames->addObject(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName(fmt::format("plr_dash{}.png"_spr, i).data()));
+			//animate
+			plr_dash->runAction(CCRepeatForever::create(CCAnimate::create(CCAnimation::createWithSpriteFrames(frames, 0.06f))));
+		};
 		updatePlayerFrame(1);
 		return true;
 	}
@@ -488,6 +559,32 @@ class $modify(PlayerObjectExt, PlayerObject) {
 		this->m_iconSpriteSecondary->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("emptyGlow.png"));
 		this->m_iconSpriteWhitener->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("emptyGlow.png"));
 		this->m_iconGlow->setDisplayFrame(CCSpriteFrameCache::sharedSpriteFrameCache()->spriteFrameByName("emptyGlow.png"));
+	}
+};
+
+#include <Geode/modify/CCNode.hpp>
+class $modify(CCNodeExt, CCNode) {
+	void myUpdates(float) {
+		if (this == nullptr) return;
+		if (auto layerRGBA = typeinfo_cast<CCLayerRGBA*>(this)) {
+			//lists
+			if (layerRGBA->getColor() == ccColor3B(191, 114, 62)) layerRGBA->setColor(ccColor3B(255, 255, 255));
+			if (layerRGBA->getColor() == ccColor3B(161, 88, 44)) layerRGBA->setColor(ccColor3B(20, 20, 20));
+			if (layerRGBA->getColor() == ccColor3B(194, 114, 62)) layerRGBA->setColor(ccColor3B(32, 32, 32));
+			//geode
+			if (layerRGBA->getColor() == ccColor3B(168, 85, 44)) layerRGBA->setColor(ccColor3B(20, 20, 20));
+			if (layerRGBA->getColor() == ccColor3B(114, 63, 31)) layerRGBA->setColor(ccColor3B(32, 32, 32));
+		};
+		if ((this->getID() == "tabs-menu") and (this->getParent()->getID() == "ModsLayer")) {
+			if (this->getContentWidth() != 445.f) {
+				this->setContentWidth(445.f);
+				this->updateLayout();
+			}
+		}
+	}
+	void visit(void) {
+		myUpdates(0.f);
+		return CCNode::visit();
 	}
 };
 

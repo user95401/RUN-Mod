@@ -1,5 +1,5 @@
 {
-	"geode": "3.1.1",
+	"geode": "3.2.0",
 	"gd": {
 		"win": "2.206",
 		"android": "2.206",
@@ -14,8 +14,9 @@
 	"early-load": true,
 	"resources": {
 		"files": [
-			"assets/preseted-factors/*.png",
 			"assets/preseted-factors/*.fnt",
+			"assets/preseted-factors/*.png",
+			"assets/effects/*.plist",
 			"assets/**/*.ttf",
 			"assets/**/*.ogg"
 		],
@@ -44,6 +45,9 @@
 			],
 			"plr_jumpdown_sheet": [
 				"assets/**/plr_jumpdown_sheet/plr_jumpdown*"
+			],
+			"plr_dash_sheet": [
+				"assets/**/plr_dash_sheet/plr_dash*"
 			],
 			"tp_sheet": [
 				"assets/_tp/frames/**/*.png"
